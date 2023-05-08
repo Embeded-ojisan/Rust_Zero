@@ -23,3 +23,25 @@ impl Display for Instruction {
         }
     }
 }
+
+pub fn print(expr: &str) -> Result<(), DnyError> {
+    println!("expr: {expr}");
+    let ast = parser::parser(expr)?;
+    println!("AST: {:?}", ast);
+
+    println!();
+    println!("code:");
+    let code = codegen::get_code(&ast)?;
+    for (n, c) in code.iter().enumerate() {
+        println!("{:>04}: {c}", n);
+    }
+
+    Ok(())
+}
+
+pub fn do_matching(expr: &str, line: &str, is_depth: bool) -> Result<bool, DnyError> {
+    let ast = parser::parser(expr)?;
+    let code = codegen::get_code(&ast)?;
+    let line = line.chars().collect::<Vec<char>>();
+    Ok(evaluator::eval(&code, &line, is_depth)?)
+}
