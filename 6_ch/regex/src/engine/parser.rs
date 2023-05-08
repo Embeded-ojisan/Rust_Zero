@@ -32,3 +32,55 @@ impl Display for ParseError {
         }
     }
 }
+
+impl Error for ParseError {}
+
+#[derive(Debug)]
+pub enum AST {
+    Char(char),
+    Plus(Box<AST>),
+    Star(Box<AST>),
+    Question(Box<AST>),
+    Or(Box<AST>, Box<AST>),
+    Seq(Vec<AST>),
+}
+
+enum PSQ {
+    Plus,
+    Star,
+    Question,
+}
+
+pub fn parse(expr: &str) -> Result<AST, ParseError> {
+    enum ParseState {
+        Char,
+        Escape,
+    }
+
+    let mut seq     = Vec::new();
+    let mut seq_or  = Vec::new();
+    let mut stack   = Vec::new();
+    let mut state   = ParseState::Char;
+
+    for (i, c) in expr.chars().enumerate() {
+        match &state {
+            ParseState::Char => {
+                match c {
+                    '+' => parse_plus_star_question(&mut seq, PSQ::Plus, i)?,
+                    '*' => parse_plus_star_question(&mut seq, PSQ::Star, i)?,
+                    '?' => parse_plus_star_question(&mut seq, PSQ::Question, i)?,
+                    '(' => {
+                        let prev = take(&mut seq);
+                        let prev_or = take(mut seq_or);
+                        stack.push((prev, prev_or));
+                    } 
+                }
+            }
+            ParseState::Escape => {
+                let ast = parse_escape(i, c)?;
+                seq.push(ast);
+                state = ParseState::Char;
+            }
+        }
+    }
+}
