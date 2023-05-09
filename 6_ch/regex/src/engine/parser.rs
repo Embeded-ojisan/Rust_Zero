@@ -83,9 +83,24 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                             if let Some(ast) = fold_or(seq_or) {
                                 prev.push(ast);
                             }
+
+                            seq = prev;
+                            seq_or = prev_or;
+                        } else {
+                            return Err(ParseError::InvalidRightParen(i));
                         }
                     }
-                }
+                    '|' => {
+                        if seq.is_empty() {
+                            return Err(ParseError::NoPrev(i));
+                        } else {
+                            let prev = take(&mut seq);
+                            seq_or.push(AST::Seq(prev));
+                        }
+                    }
+                    '\\' => state = ParseState::Escape,
+                    _ => seq.push(AST::Char(c)),
+                };
             }
             ParseState::Escape => {
                 let ast = parse_escape(i, c)?;
@@ -93,5 +108,17 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                 state = ParseState::Char;
             }
         }
+    }
+
+    if !stack.is_empty() {
+        return Err(ParseError::NoRightParen);
+    }
+
+    if !seq.is_empty() {
+        seq_or.push(AST::Seq(seq));
+    }
+
+    if let Some(ast) = fold_or(seq_or) {
+        ;
     }
 }
