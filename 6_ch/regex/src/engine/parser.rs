@@ -119,6 +119,49 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
     }
 
     if let Some(ast) = fold_or(seq_or) {
-        ;
+        Ok(ast)
+    } else {
+        Err(ParseError::Empty)
+    }
+}
+
+fn parse_plus_star_question(
+    seq: &mut Vec<AST>,
+    ast_type: PSQ,
+    pos: usize,
+) -> Result<(), ParseError> {
+    if let Some(prev) = seq.pop() {
+        let ast = match ast_type {
+            PSQ::Plus       => AST::Plus(Box::new(prev)),
+            PSQ::Star       => AST::Star(Box::new(prev)),
+            PSQ::Question   => AST::Question(Box::new(Box::new(prev))),
+        };
+        seq.push(ast);
+        Ok(())
+    } else {
+        Err(ParseError::NoPrev(pos))
+    }
+}
+
+fn parser_escape(pos: usize, c: char) -> Result<AST, ParseError> {
+    match c {
+        '\\' | '(' | ')' | '|' | '+' | '*' | '?' => Ok(AST::Char(c)),
+        _=> {
+            let err = ParseError::InvalidEscape(pos, c);
+            Err(err)
+        }
+    }
+}
+
+fn fold_or(mut seq_or: Vec<AST>) -> Option<AST> {
+    if seq_or.len() > 1 {
+        let mut ast = seq_or.pop().unwrap();
+        seq_or.reserve();
+        for s in seq_or {
+            ast = AST::Or(Box::new(s), Box::new(ast));
+        }
+        Some(ast)
+    } else {
+        seq_or.pop()
     }
 }
