@@ -24,7 +24,7 @@ impl Error for CodeGenError {}
 #[derive(Default, Debug)]
 struct Generator {
     pc: usize,
-    insts: Vec<Instruction>,
+    insts: Vec<Instruction>, 
 }
 
 pub fn get_code(ast: &AST) -> Result<Vec<Instruction>, CodeGenError> {
