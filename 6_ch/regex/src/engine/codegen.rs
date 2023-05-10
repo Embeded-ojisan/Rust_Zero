@@ -18,7 +18,7 @@ impl Display for CodeGenError {
         write!(f, "CodeGenError: {:?}", self)
     }
 }
-
+ 
 impl Error for CodeGenError {}
 
 #[derive(Default, Debug)]
