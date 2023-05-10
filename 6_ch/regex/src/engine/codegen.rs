@@ -32,3 +32,5 @@ pub fn get_code(ast: &AST) -> Result<Vec<Instruction>, CodeGenError> {
     generator.gen_code(ast)?;
     Ok(generator.insts)
 }
+
+
