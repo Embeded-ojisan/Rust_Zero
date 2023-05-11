@@ -34,3 +34,30 @@ pub fn get_code(ast: &AST) -> Result<Vec<Instruction>, CodeGenError> {
 }
 
 
+impl Generator {
+    fn get_code(&mut self, ast: &AST) -> Result<(), CodeGenError> {
+        self.gen_expr(ast)?;
+        self.inc_pc()?;
+        self.insts.push(Instruction::Match);
+        Ok(())
+    }
+
+    fn gen_expr(&mut self, ast: &AST) -> Result<(), CodeGenError> {
+        match ast {
+            AST::Char(c)            =>      self.gen_char(*c)?,
+            AST::Or(e1, e2)         =>      self.gen_or(e1, e2)?,
+            AST::Plus(e1)           =>      self.gen_code(e)?,
+            AST::Star(e1)           =>      {
+                match &**e1 {
+                    AST::Star(_)    =>  self.gen_expr(&e1)?,
+                    AST::Seq(e2) if e2.len() == 1 => {
+                        self.gen_expr(e3)?
+                    } else {
+                        self.gen_star(e1)?
+                    }
+                }
+                e => self.gen_star(&e)?,
+            }
+        }
+    }
+}
