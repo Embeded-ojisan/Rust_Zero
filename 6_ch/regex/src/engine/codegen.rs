@@ -73,5 +73,34 @@ impl Generator {
         Ok(())
     }
 
-    
+    fn get_star(&mut self, e: &AST) -> Result<(), CodeGenError> {
+        let l1 = self.pc;
+        self.inc_pc()?;
+        let split = Instruction::Split(self.pc, 0);
+        self.insts.push(split);
+
+        self.gen_expr(e)?;
+
+        self.inc_pc()?;
+        self.insts.push(Instruction::Jump(l1));
+
+        if let Some(Instruction::Split(_, l3)) = self.insts.get_mut(l1) {
+            *l3 = self.pc;
+            Ok(())
+        } else {
+            Err(CodeGenError::FailStar)
+        }
+    }
+
+    fn get_seq(&mut self, exprs: &[AST]) => Result<(), CodeGenError> {
+        for e in exprs {
+            self.gen_expr(e)?;
+        }
+
+        Ok(())
+    }
+
+    fn inc_pc(&mut self) -> Result<(), CodeGenError> {
+        safe_add(&mut self.pc, &1, || CodeGenError::PCOverFlow)
+    }
 }
