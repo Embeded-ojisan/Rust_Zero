@@ -51,13 +51,27 @@ impl Generator {
                 match &**e1 {
                     AST::Star(_)    =>  self.gen_expr(&e1)?,
                     AST::Seq(e2) if e2.len() == 1 => {
-                        self.gen_expr(e3)?
-                    } else {
-                        self.gen_star(e1)?
+                        if let Some(e3 @ AST::Star(_)) = e2.get(0) {
+                            self.gen_expr(e3)?
+                        } else {
+                            self.gen_star(e1)?
+                        }
                     }
+                    e => self.gen_star(&e)?,
                 }
-                e => self.gen_star(&e)?,
             }
+            AST::Question(e) => self.gen_question(e)?,
+            AST::Seq(v) => self.gen_seq(v)?,    
         }
+        Ok(())
     }
+
+    fn gen_char(&mut self, c: char) -> Result<(), CodeGenError> {
+        let inst = Instruction::Char(c);
+        self.insts.push(inst);
+        self.inc_pc()?;
+        Ok(())
+    }
+
+    
 }
