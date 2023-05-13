@@ -15,7 +15,7 @@ impl Display for EvelError {
 
 impl Error for EvelError {}
 
-pub fn evel(inst: &[Instruction], line: &[char], is_depth: bool) -> result<(), EvelError> {
+pub fn eval(inst: &[Instruction], line: &[char], is_depth: bool) -> result<(), EvelError> {
     if is_depth {
         eval_width(inst, line)
     } else {
@@ -23,7 +23,7 @@ pub fn evel(inst: &[Instruction], line: &[char], is_depth: bool) -> result<(), E
     }
 }
 
-fn evel_width(
+fn eval_depth(
     inst: &[Instruction],
     line: &[char],
     mut pc: usize,
@@ -38,15 +38,97 @@ fn evel_width(
     };
 
     match next {
-        Instruction::Char(c) => {
-            if c == sp_c {
-                safe_add(&mut pc, &1, || EvelError::PCOverFlow)?;
-                safe_add(&mut pc, &1, || EvelError::SPOverFlow)?;
+        Instruction::Char(c)                => {
+            if let Some(sp_c) = line.get(sp) {
+                if c == sp_c {
+                    safe_add(&mut pc, &1, || EvelError::PCOverFlow)?;
+                    safe_add(&mut pc, &1, || EvelError::SPOverFlow)?;
+                } else {
+                    return Ok(false);
+                }
             } else {
                 return Ok(false);
             }
+        }
+        Instruction::Match                  => {
+            return Ok(true);
+        }
+        Instruction::Jump(addr)             => {
+            pc = *addr;
+        }
+        Instruction::Split(addr1, addr2)    => {
+            if eval_depth(inst, line, *addr1, sp)? || eval_depth(inst, line, *addr2, sp)? {
+                return Ok(true);
+            } else {
+                return Ok(false);
+            }
+        }
+    }
+}
+
+fn pop_ctx(
+    pc: &mut usize, 
+    sp: &mut usize,
+    ctx: &mut VecDeque<(usize, usize)>,
+) -> Result<(), EvalError> {
+    if let Some((p, s)) = ctx.pop_back() {
+        *pc = p;
+        *sp = s;
+        Ok(())
+    } else {
+        Err(EvalError::InvalidContext)
+    }
+}
+
+fn eval_width(inst: &[Instruction], line: &[char]) -> Result<bool, EvelError> {
+    let mut ctx = VecDeque::new();
+    let mut pc = 0;
+    let mut sp = 0;
+
+    loop {
+        let next = if let Some(i) = inst.get(pc) {
+            i
         } else {
-            return Ok(false);
+            return Err(EvelError::InvalidPC);
+        };
+
+        match next {
+            Instruction::Char(c) => {
+                if let Some(sp_c) = line.get(sp) {
+                    if c == sp_c {
+                        safe_add(&mut pc, &1 || EvelError::PCOverFlow)?;
+                        safe_add(&mut sp, &1 || EvelError::SPOverFlow)?;
+                    } else {
+                        if ctx.is_empty() {
+                            return Ok(false);
+                        } else {
+                            pop_ctx(&mut pc, &mut sp, &mut ctx)?;
+                        }
+                    }
+                } else {
+                    if ctx.is_empty() {
+                        return Ok(false);
+                    } else {
+                        pop_ctx(&mut pc, &mut sp, &mut ctx)?;
+                    }
+                }
+            }
+            Instruction::Match => {
+                return Ok(true);
+            }
+            Instruction::Jump(addr) => {
+                pc = *addr;
+            }
+            Instruction::Split(addr1, addr2) => {
+                pc = *addr1;
+                ctx.push_back((*addr2, sp));
+                continue;
+            }
+        }
+
+        if !ctx.is_empty() {
+            ctx.push_back((pc, sp));
+            pop_ctx(&mut pc, &mut sp, &mut ctx)?;
         }
     }
 }
