@@ -5,7 +5,7 @@ use helper::DynError;
 use std::{
     env,
     fs::File,
-    io{BufRead, BufReader},
+    io::{BufRead, BufReader},
 };
 
 fn main() -> Result<(), DynError> {
@@ -15,15 +15,15 @@ fn main() -> Result<(), DynError> {
         eprintln!("usage: {} regex file", args[0]);
         return Err("Invalid arguments".into())
     } else {
-        match_file(&args[1], &arg{2})?;
+        match_file(&args[1], &args[2])?;
     }
 
     Ok(())
 }
 
-fn match_file(expr: &str, file: &str) -> Result<(), DnyError> {
+fn match_file(expr: &str, file: &str) -> Result<(), DynError> {
     let f = File::open(file)?;
-    let reader  BufReader::new(f);
+    let reader = BufReader::new(f);
 
     engine::print(expr)?;
     println!();
@@ -31,7 +31,7 @@ fn match_file(expr: &str, file: &str) -> Result<(), DnyError> {
     for line in reader.lines() {
         let line = line?;
         for (i, _) in line.char_indices() {
-            if engine::do_matching(expr, &line[i..]. true)? {
+            if engine::do_matching(expr, &line[i..], true)? {
                 println!("{line}");
                 break;
             }

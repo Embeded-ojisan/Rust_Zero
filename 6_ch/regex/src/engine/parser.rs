@@ -14,10 +14,10 @@ pub enum ParseError {
 }
 
 impl Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<`_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ParseError::InvalidEscape(pos, c) => {
-                write!(f, "ParseError: invalid escape: pos = {pos}", char = `{c}`"")
+                write!(f, "ParseError: invalid escape: pos = {pos}, char = '{c}'")
             }
             ParseError::InvalidRightParen(pos) => {
                 write!(f, "ParseError: invalid right parenthesis: pos = {pos}")
@@ -71,7 +71,7 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                     '?' => parse_plus_star_question(&mut seq, PSQ::Question, i)?,
                     '(' => {
                         let prev = take(&mut seq);
-                        let prev_or = take(mut seq_or);
+                        let prev_or = take(&mut seq_or);
                         stack.push((prev, prev_or));
                     } 
                     ')' => {
@@ -134,7 +134,7 @@ fn parse_plus_star_question(
         let ast = match ast_type {
             PSQ::Plus       => AST::Plus(Box::new(prev)),
             PSQ::Star       => AST::Star(Box::new(prev)),
-            PSQ::Question   => AST::Question(Box::new(Box::new(prev))),
+            PSQ::Question   => AST::Question(Box::new(prev)),
         };
         seq.push(ast);
         Ok(())
@@ -143,7 +143,7 @@ fn parse_plus_star_question(
     }
 }
 
-fn parser_escape(pos: usize, c: char) -> Result<AST, ParseError> {
+fn parse_escape(pos: usize, c: char) -> Result<AST, ParseError> {
     match c {
         '\\' | '(' | ')' | '|' | '+' | '*' | '?' => Ok(AST::Char(c)),
         _=> {
@@ -156,7 +156,7 @@ fn parser_escape(pos: usize, c: char) -> Result<AST, ParseError> {
 fn fold_or(mut seq_or: Vec<AST>) -> Option<AST> {
     if seq_or.len() > 1 {
         let mut ast = seq_or.pop().unwrap();
-        seq_or.reserve();
+        seq_or.reverse();
         for s in seq_or {
             ast = AST::Or(Box::new(s), Box::new(ast));
         }

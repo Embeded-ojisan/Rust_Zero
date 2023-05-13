@@ -2,7 +2,7 @@ mod codegen;
 mod evaluator;
 mod parser;
 
-use crate::helper::DnyError;
+use crate::helper::DynError;
 use std::fmt::{self, Display};
 
 #[derive(Debug)]
@@ -14,7 +14,7 @@ pub enum Instruction {
 }
 
 impl Display for Instruction {
-    fn fmt(&self, f: &mut fmt::Formatter<`_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Instruction::Char(c)                => write!(f, "char {}", c),
             Instruction::Match                  => write!(f, "match"),
@@ -24,9 +24,9 @@ impl Display for Instruction {
     }
 }
 
-pub fn print(expr: &str) -> Result<(), DnyError> {
+pub fn print(expr: &str) -> Result<(), DynError> {
     println!("expr: {expr}");
-    let ast = parser::parser(expr)?;
+    let ast = parser::parse(expr)?;
     println!("AST: {:?}", ast);
 
     println!();
@@ -39,8 +39,8 @@ pub fn print(expr: &str) -> Result<(), DnyError> {
     Ok(())
 }
 
-pub fn do_matching(expr: &str, line: &str, is_depth: bool) -> Result<bool, DnyError> {
-    let ast = parser::parser(expr)?;
+pub fn do_matching(expr: &str, line: &str, is_depth: bool) -> Result<bool,DynError> {
+    let ast = parser::parse(expr)?;
     let code = codegen::get_code(&ast)?;
     let line = line.chars().collect::<Vec<char>>();
     Ok(evaluator::eval(&code, &line, is_depth)?)
