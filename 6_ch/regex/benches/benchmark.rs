@@ -42,7 +42,7 @@ fn depth_first(c: &mut Criterion) {
 
     for i in INPUTS {
         g.bench_with_input(i.0, &(i.1, i.2), |b, args| {
-            b.iter(|| do_matching(args.0, arg.1, true))
+            b.iter(|| do_matching(args.0, args.1, true))
         });
     }
 }
@@ -53,7 +53,7 @@ fn width_first(c: &mut Criterion) {
 
     for i in INPUTS {
         g.bench_with_input(i.0, &(i.1, i.2), |b, args| {
-            b.iter(|| do_matching(args.0, arg.1, true))
+            b.iter(|| do_matching(args.0, args.1, true))
         });
     }
 }
