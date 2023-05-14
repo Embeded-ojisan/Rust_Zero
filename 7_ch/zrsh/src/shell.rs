@@ -58,3 +58,19 @@ use std::{
     thread,
 };
 
+struct CleanUp<F>
+where
+    F: Fn(),
+{
+    f: F,
+}
+
+impl<F> Drop for CleanUp<F>
+where
+    F: Fn(),
+{
+    fn drop(&mut self) {
+        (self.f)()
+    }
+}
+
