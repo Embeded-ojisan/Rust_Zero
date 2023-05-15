@@ -139,7 +139,28 @@ impl Shell {
                         }
                     }
                 }
+                Err(ReadlineError::Interrupted) => eprintln!("ZeroSh: 終了はCtrl+D"),
+                Err(ReadlineError::Eof) => {
+                    worker_tx.send(WorkerMsg::Cmd("exit".to_string())).unwrap();
+                    match shell_rx.recv().unwrap() {
+                        ShellMsg::Quit(n) => {
+                            exit_val = n;
+                            break;
+                        }
+                        _ => panic!("exitに失敗"),
+                    }
+                }
+                Err(e) => {
+                    eprintln!("ZeroSh: 読み込みエラー\n{e}");
+                    exit_val = 1;
+                    break;
+                }
             }
         }
+
+        if let Err(e) = r1.save_history(&self.logfile) {
+            eprintln!("ZeroSh: ヒストリファイルの書き込みに失敗: {e}");
+        }
+        exit(exit_val);
     }
 }
