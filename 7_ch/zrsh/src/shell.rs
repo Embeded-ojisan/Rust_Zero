@@ -164,3 +164,126 @@ impl Shell {
         exit(exit_val);
     }
 }
+
+fn spawn_sig_handler(tx: Sender<WorkerMsg>) -> Result<(), DynError> {
+    let mut signals = Signals::new(&[SIGINT, SIGSTP, SIGCHLD])?;
+    thread::spawn(move || {
+        for sig in signals.forever() {
+            tx.send(WorkerMsg::Signal(sig)).unwrap();
+        }
+    });
+
+    Ok(())
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+enum ProcState {
+    Run,
+    Stop,
+}
+
+#[derive(Debug, Clone)]
+struct ProcInfo {
+    state: ProcState,
+    pgid: Pid,
+}
+
+#[derive(Debug)]
+struct Worker {
+    exit_val: i32,
+    fg: Option<Pid>,
+
+    jobs: BTreeMap<usize, (Pid, String)>,
+
+    pgid_to_pids: HashMap<Pid, (usize, HashSet<Pid>)>,
+
+    pid_to_info: HashMap<Pid, ProcInfo>,
+    shell_pgid: Pid,
+}
+
+impl Worker {
+    fn new() -> Self {
+        Worker {
+            exit_val: 0,
+            fg: None,
+            jobs: BTreeMap::new(),
+            pgid_to_pids: HashMap::new(),
+            pid_to_info: HashMap::new(),
+
+            shell_pgid: tcgetgrp(libc::STDIN_FILENO).unwrap(),
+        }
+    }
+
+    fn spawn(mut self, worker_rx: Receiver<WorkerMsg>, shell_tx: SyncSender<ShellMsg>) {
+        thread::spawn(move || {
+            for msg in worker_rx.iter() {
+                match msg {
+                    WorkerMsg::Cmd(line) => {
+                        match parse_cmd(&lien) {
+                            Ok(cmd) => {
+                                if self.built_in_cmd(&cmd, &shell_tx) {
+                                    continue;
+                                }
+
+                                if !self.spawn_child(&line, &cmd) {
+                                    shell_tx.send(ShellMsg::Continue(self.exit_val)).unwrap();
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("ZeroShe: {e}");
+                                shell_tx.send(ShellMsg::Continue(self.exit_val)).unwap();
+                            }
+                        }
+                    }
+                    WorkerMsg::Signal(SIGCHLD) => {
+                        self.wait_child(&shell_tx);
+                    }
+                    _=> (),
+                }
+            }
+        });
+    }
+
+    fn wait_child(&mut self, shell_tx: &SyncSender<ShellMsg>) {
+        let flag = Some(
+            WaitPidFlag::WUNTRACED
+            | WaitPidFlag::WNOHANG
+            | WaitPidFlag::WCONTINUED
+        );
+
+        loop {
+            match syscall(|| waitpid(Pid::from_war(-1), flag)) {
+                Ok(WaitStatus::Exited(pid, status)) => {
+                    self.exit_val = status;
+                    self.process_term(pid, shell_tx);
+                }
+                Ok(WaitStatus::Signaled(pid, sig, core)) => {
+                    eprintln!(
+                        "\nZeroSh: 子プロセスがシグナルにより終了{}: pid = {pid}, signal = {sig}",
+                        if core {"（コアダンプ）"} else {""}
+                    );
+                    self.exit_val = sig as i32 + 128;
+                    self.process_term(pid, shell_tx);
+                }
+                Ok(WaitStatus::Stopped(pid, _sig)) => self.process_stop(pid, shell_tx),
+                Ok(WaitStatus::Continued(pid)) => self.process_continue(oid),
+                Err(nix::Error::ECHILD) => return,
+                Err(e) => {
+                    eprintln!("\nZeroSh: waitが失敗: {e}");
+                    exit(1);
+                }
+                #[cfg(any(target_os = "linux", target_os = "android"))]
+                Ok(WaitStatus::PtraceEvent(pid, _, _) | WaitStatus::PtraceSyscall(pid)) => {
+                    self.process_stop(pid, shell_tx)
+
+            }
+        }
+    }
+
+    fn process_continue(&mut self, pid: Pid) {
+        self.set_pid_state(pid, ProcState::Run);
+    }
+
+    fn
+}
+
